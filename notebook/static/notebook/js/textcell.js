@@ -1,6 +1,5 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
-
 define([
     'jquery',
     'base/js/utils',
@@ -13,7 +12,9 @@ define([
     'components/marked/lib/marked',
     'codemirror/lib/codemirror',
     'codemirror/mode/gfm/gfm',
-    'notebook/js/codemirror-ipythongfm'
+    'notebook/js/codemirror-ipythongfm',
+    'notebook/js/rawdeflate',
+    'notebook/js/compress'
 ], function(
     $,
     utils,
@@ -26,7 +27,9 @@ define([
     marked,
     CodeMirror,
     gfm,
-    ipgfm
+    ipgfm,
+    rawdeflate,
+    compress
     ) {
     "use strict";
     function encodeURIandParens(uri){return encodeURI(uri).replace('(','%28').replace(')','%29')}
@@ -386,6 +389,23 @@ define([
         if (cont) {
             var that = this;
             var text = this.get_text();
+            // test plant uml block
+            var ptn = /(\n|^)@startuml( .*?\n|\n)[\s\S]*\n@enduml(\n|$)/
+            var rx = text.match(ptn);
+            if (rx) {
+                // replace uml block with img tag
+                var umlblock = rx[0];
+                var url = rx[2].replace(/[ \n]/g, "");
+                if (!url) {
+                    url = "http://www.plantuml.com/plantuml/png"
+                }
+                if (!url.endsWith("/")){
+                    url = url + "/";
+                }
+                var b64 = compress(rx[0]);
+                var imgurl = url + b64
+                var text = text.replace(ptn, "<img src=\""+imgurl+"\">");
+            }
             var math = null;
             if (text === "") { text = this.placeholder; }
             var text_and_math = mathjaxutils.remove_math(text);
